@@ -3,6 +3,25 @@ import { IUser } from "../models/User";
 import { login, register } from "../service/UserServices";
 import { Request, Response } from "express";
 import { InvalidUsernameOrPasswordError } from "../utils/LibraryError";
+import jwt from "jsonwebtoken";
+
+// Generate Access Token
+const generateAccessToken = (user: Partial<IUserModel>) => {
+  return jwt.sign(
+    { _id: user._id, type: user.type, email: user.email },
+    process.env.JWT_ACCESS_SECRET!,
+    { expiresIn: "7d" } // Access token valid for 15 minutes
+  );
+};
+
+// Generate Refresh Token
+const generateRefreshToken = (user: Partial<IUserModel>) => {
+  return jwt.sign(
+    { _id: user._id, type: user.type, email: user.email },
+    process.env.JWT_REFRESH_SECRET!,
+    { expiresIn: "7d" } // Refresh token valid for 7 days
+  );
+};
 
 async function handleRegister(req: Request, res: Response) {
   const user: IUser = req.body;
@@ -32,6 +51,9 @@ async function handleLogin(req: Request, res: Response) {
 
   try {
     const loggedIn: IUserModel = await login(credentials);
+    const accessToken = generateAccessToken(loggedIn);
+    const refreshToken = generateRefreshToken(loggedIn);
+
     res.status(200).json({
       message: "User logged in successfully",
       user: {
@@ -40,6 +62,10 @@ async function handleLogin(req: Request, res: Response) {
         firstName: loggedIn.firstName,
         lastName: loggedIn.lastName,
         email: loggedIn.email,
+      },
+      tokens: {
+        accessToken,
+        refreshToken,
       },
     });
   } catch (error: any) {

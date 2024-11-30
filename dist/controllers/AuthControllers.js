@@ -8,9 +8,23 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const UserServices_1 = require("../service/UserServices");
 const LibraryError_1 = require("../utils/LibraryError");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+// Generate Access Token
+const generateAccessToken = (user) => {
+    return jsonwebtoken_1.default.sign({ _id: user._id, type: user.type, email: user.email }, process.env.JWT_ACCESS_SECRET, { expiresIn: "7d" } // Access token valid for 15 minutes
+    );
+};
+// Generate Refresh Token
+const generateRefreshToken = (user) => {
+    return jsonwebtoken_1.default.sign({ _id: user._id, type: user.type, email: user.email }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" } // Refresh token valid for 7 days
+    );
+};
 function handleRegister(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const user = req.body;
@@ -40,6 +54,8 @@ function handleLogin(req, res) {
         const credentials = req.body;
         try {
             const loggedIn = yield (0, UserServices_1.login)(credentials);
+            const accessToken = generateAccessToken(loggedIn);
+            const refreshToken = generateRefreshToken(loggedIn);
             res.status(200).json({
                 message: "User logged in successfully",
                 user: {
@@ -48,6 +64,10 @@ function handleLogin(req, res) {
                     firstName: loggedIn.firstName,
                     lastName: loggedIn.lastName,
                     email: loggedIn.email,
+                },
+                tokens: {
+                    accessToken,
+                    refreshToken,
                 },
             });
         }
